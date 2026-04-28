@@ -1,0 +1,121 @@
+from __future__ import annotations
+
+import threading
+import tkinter as tk
+from tkinter import messagebox, ttk
+from typing import Callable
+
+from ..backend.orchestrator import OrchestratorService
+from ..backend.orchestrator.models import SystemConfig
+from .config import APP_TITLE, APP_WINDOW_SIZE, DEFAULT_REFRESH_INTERVAL_MS
+from .pages.init_page import InitPage
+from .pages.monitor_page import MonitorPage
+from .pages.parameter_page import ParameterPage
+from .pages.status_page import StatusPage
+from .pages.video_source_page import VideoSourcePage
+
+
+class FrontendApp(tk.Tk):
+    def __init__(self, orchestrator: OrchestratorService | None = None):
+        super().__init__()
+        self.title(APP_TITLE)
+        self.geometry(APP_WINDOW_SIZE)
+        self.minsize(1080, 720)
+
+        self.orchestrator = orchestrator or OrchestratorService()
+        self.frontend_config: dict[str, object] = {}
+        self.refresh_interval_ms = DEFAULT_REFRESH_INTERVAL_MS
+        self._current_page = None
+
+        self._build_layout()
+        self._build_pages()
+        self.show_page("parameter")
+
+    def _build_layout(self) -> None:
+        self.container = ttk.Frame(self)
+        self.container.pack(fill="both", expand=True)
+
+    def _build_pages(self) -> None:
+        self.pages = {
+            "parameter": ParameterPage(self.container, self),
+            "video_source": VideoSourcePage(self.container, self),
+            "init": InitPage(self.container, self),
+            "monitor": MonitorPage(self.container, self),
+            "status": StatusPage(self.container, self),
+        }
+        for page in self.pages.values():
+            page.place(relx=0, rely=0, relwidth=1, relheight=1)
+
+    def show_page(self, key: str) -> None:
+        if key not in self.pages:
+            raise KeyError(f"unknown page: {key}")
+        if self._current_page is not None and hasattr(self._current_page, "on_hide"):
+            self._current_page.on_hide()
+        page = self.pages[key]
+        page.tkraise()
+        self._current_page = page
+        if hasattr(page, "on_show"):
+            page.on_show()
+
+    def build_system_config(self) -> SystemConfig:
+        missing = [
+            k
+            for k in (
+                "target_diameter",
+                "pixel_to_micron",
+                "video_source_type",
+                "video_source",
+                "initial_q1",
+                "initial_q2",
+                "control_interval_ms",
+            )
+            if k not in self.frontend_config
+        ]
+        if missing:
+            raise ValueError(f"缺少配置项: {missing}")
+
+        return SystemConfig(
+            target_diameter=float(self.frontend_config["target_diameter"]),
+            pixel_to_micron=float(self.frontend_config["pixel_to_micron"]),
+            video_source_type=str(self.frontend_config["video_source_type"]),
+            video_source=str(self.frontend_config["video_source"]),
+            initial_q1=float(self.frontend_config["initial_q1"]),
+            initial_q2=float(self.frontend_config["initial_q2"]),
+            control_interval_ms=int(self.frontend_config["control_interval_ms"]),
+        )
+
+    def configure_prepare_initialize(self) -> None:
+        cfg = self.build_system_config()
+        self.orchestrator.configure(cfg)
+        self.orchestrator.prepare_video()
+        self.orchestrator.initialize_system()
+
+    def run_backend_task(
+        self,
+        task: Callable[[], object],
+        on_success: Callable[[], None] | None = None,
+        on_error: Callable[[Exception], None] | None = None,
+    ) -> None:
+        def worker():
+            try:
+                task()
+            except Exception as e:
+                if on_error is not None:
+                    self.after(0, lambda: on_error(e))
+                else:
+                    self.after(0, lambda: messagebox.showerror("操作失败", str(e)))
+                return
+            if on_success is not None:
+                self.after(0, on_success)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+
+def main() -> None:
+    app = FrontendApp()
+    app.mainloop()
+
+
+if __name__ == "__main__":
+    main()
+

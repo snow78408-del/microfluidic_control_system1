@@ -1,0 +1,9 @@
+from __future__ import annotations
+
+APP_TITLE = "微流控液滴直径反馈控制系统"
+APP_WINDOW_SIZE = "1280x840"
+
+DEFAULT_REFRESH_INTERVAL_MS = 300
+MIN_REFRESH_INTERVAL_MS = 200
+MAX_REFRESH_INTERVAL_MS = 500
+
