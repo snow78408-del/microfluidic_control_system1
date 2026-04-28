@@ -1,0 +1,74 @@
+﻿# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Virtual environments
+.venv/
+venv/
+env/
+backend/venv/
+backend/vision/venv/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+pip-wheel-metadata/
+
+# Logs / temp
+*.log
+logs/
+tmp/
+temp/
+*.tmp
+
+# Coverage
+.coverage
+.coverage.*
+htmlcov/
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# Frontend artifacts
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/.cache/
+frontend/coverage/
+
+# Vision intermediate outputs
+outputs/
+output/
+results/
+artifacts/
+cache/
+frames/
+debug/
+**/debug_frames/
+**/intermediate/
+**/tmp_frames/
+
+# Large generated files
+*.avi
+*.mp4
+*.mov
+*.mkv
+*.npy
+*.npz
+*.pt
+*.pth
+*.onnx
