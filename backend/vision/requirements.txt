@@ -1,0 +1,4 @@
+﻿numpy>=1.23
+opencv-python>=4.8
+typing-extensions>=4.7; python_version < "3.11"
+dataclasses; python_version < "3.7"
