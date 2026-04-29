@@ -1,12 +1,17 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import threading
 import tkinter as tk
 from tkinter import messagebox, ttk
 from typing import Callable
 
-from ..backend.orchestrator import OrchestratorService
-from ..backend.orchestrator.models import SystemConfig
+try:
+    from backend.orchestrator import OrchestratorService
+    from backend.orchestrator.models import SystemConfig
+except Exception:  # pragma: no cover
+    from ..backend.orchestrator import OrchestratorService
+    from ..backend.orchestrator.models import SystemConfig
+
 from .config import APP_TITLE, APP_WINDOW_SIZE, DEFAULT_REFRESH_INTERVAL_MS
 from .pages.init_page import InitPage
 from .pages.monitor_page import MonitorPage
@@ -58,21 +63,18 @@ class FrontendApp(tk.Tk):
             page.on_show()
 
     def build_system_config(self) -> SystemConfig:
-        missing = [
-            k
-            for k in (
-                "target_diameter",
-                "pixel_to_micron",
-                "video_source_type",
-                "video_source",
-                "initial_q1",
-                "initial_q2",
-                "control_interval_ms",
-            )
-            if k not in self.frontend_config
-        ]
+        required = (
+            "target_diameter",
+            "pixel_to_micron",
+            "video_source_type",
+            "video_source",
+            "initial_q1",
+            "initial_q2",
+            "control_interval_ms",
+        )
+        missing = [k for k in required if k not in self.frontend_config]
         if missing:
-            raise ValueError(f"缺少配置项: {missing}")
+            raise ValueError(f"missing config fields: {missing}")
 
         return SystemConfig(
             target_diameter=float(self.frontend_config["target_diameter"]),
@@ -82,6 +84,10 @@ class FrontendApp(tk.Tk):
             initial_q1=float(self.frontend_config["initial_q1"]),
             initial_q2=float(self.frontend_config["initial_q2"]),
             control_interval_ms=int(self.frontend_config["control_interval_ms"]),
+            pump_port=str(self.frontend_config.get("pump_port", "COM3")).strip(),
+            pump_address=int(self.frontend_config.get("pump_address", 1)),
+            pump_baudrate=int(self.frontend_config.get("pump_baudrate", 1200)),
+            pump_parity=str(self.frontend_config.get("pump_parity", "E")).strip().upper() or "E",
         )
 
     def configure_prepare_initialize(self) -> None:
@@ -118,4 +124,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

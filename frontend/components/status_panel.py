@@ -1,9 +1,12 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import tkinter as tk
 from tkinter import ttk
 
-from ...backend.orchestrator.models import SystemSnapshot
+try:
+    from backend.orchestrator.models import SystemSnapshot
+except Exception:  # pragma: no cover
+    from ...backend.orchestrator.models import SystemSnapshot
 
 
 class StatusPanel(ttk.LabelFrame):
@@ -17,21 +20,21 @@ class StatusPanel(ttk.LabelFrame):
 
     def _build(self) -> None:
         rows = [
-            ("系统状态", self.system_state_var),
-            ("当前阶段", self.stage_var),
-            ("提示信息", self.message_var),
-            ("错误信息", self.error_var),
+            ("状态", self.system_state_var),
+            ("阶段", self.stage_var),
+            ("提示", self.message_var),
+            ("错误", self.error_var),
         ]
         for i, (name, var) in enumerate(rows):
-            ttk.Label(self, text=f"{name}:").grid(row=i, column=0, sticky="w", padx=6, pady=4)
-            ttk.Label(self, textvariable=var).grid(row=i, column=1, sticky="w", padx=6, pady=4)
+            ttk.Label(self, text=f"{name}:").grid(row=i, column=0, sticky="w", padx=4, pady=2)
+            ttk.Label(self, textvariable=var, wraplength=260).grid(row=i, column=1, sticky="w", padx=4, pady=2)
         self.columnconfigure(1, weight=1)
 
     def update_snapshot(self, snapshot: SystemSnapshot | None) -> None:
         if snapshot is None:
             return
-        self.system_state_var.set(getattr(snapshot.system_state, "value", str(snapshot.system_state)))
-        self.stage_var.set(getattr(snapshot.system_state, "value", str(snapshot.system_state)))
+        value = getattr(snapshot.system_state, "value", str(snapshot.system_state))
+        self.system_state_var.set(value)
+        self.stage_var.set(value)
         self.message_var.set(snapshot.message or "--")
         self.error_var.set(snapshot.error or "--")
-

@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 from dataclasses import asdict, is_dataclass
@@ -84,4 +84,3 @@ class StatusPage(ttk.Frame):
                 self.text.insert("", "end", text=line.strip(), values=("",))
 
         self._poll_job = self.after(self.app.refresh_interval_ms, self._poll_once)
-

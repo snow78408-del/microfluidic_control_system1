@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import tkinter as tk
 from tkinter import messagebox, ttk
@@ -47,4 +47,3 @@ class ParameterPage(ttk.Frame):
         self.app.frontend_config["pixel_to_micron"] = pixel
         self.app.frontend_config["control_interval_ms"] = interval
         self.app.show_page("video_source")
-

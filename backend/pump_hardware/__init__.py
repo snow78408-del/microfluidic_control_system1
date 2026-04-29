@@ -1,6 +1,7 @@
 from .config import PumpHardwareConfig, SerialConfig
 from .models import (
     ChannelParams,
+    FlowUpdateResult,
     PumpConnectionState,
     PumpOperationResult,
     RunState,
@@ -16,6 +17,6 @@ __all__ = [
     "SystemSetup",
     "RunState",
     "ChannelParams",
+    "FlowUpdateResult",
     "PumpOperationResult",
 ]
-

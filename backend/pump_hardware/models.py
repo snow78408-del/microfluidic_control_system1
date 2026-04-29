@@ -53,3 +53,16 @@ class PumpOperationResult:
     verified: bool = False
     reason: str | None = None
 
+
+@dataclass(slots=True)
+class FlowUpdateResult:
+    ok: bool
+    q1_ok: bool
+    q2_ok: bool
+    still_running: bool
+    q1_error: str | None = None
+    q2_error: str | None = None
+    run_state_error: str | None = None
+    verified_q1: ChannelParams | None = None
+    verified_q2: ChannelParams | None = None
+    reason: str | None = None

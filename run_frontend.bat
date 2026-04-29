@@ -1,9 +1,11 @@
 @echo off
 setlocal
-set PY=D:\??\microfluidic_control_system\backend\venv\Scripts\python.exe
+set "ROOT=%~dp0"
+set "PY=%ROOT%backend\venv\Scripts\python.exe"
 if not exist "%PY%" (
   echo [ERROR] venv python not found: %PY%
+  echo Please run backend\venv setup first.
   exit /b 1
 )
-"%PY%" D:\??\microfluidic_control_system\frontend\run.py
+"%PY%" "%ROOT%frontend\run.py"
 endlocal

@@ -73,6 +73,9 @@ class MetricsConfig:
     min_active_for_control: int = 2
     min_samples_for_control: int = 12
     rolling_window: int = 120
+    count_line_ratio: float = 0.6
+    min_track_age_for_count: int = 3
+    min_track_displacement_for_count: float = 8.0
 
 
 @dataclass
@@ -80,6 +83,8 @@ class DebugConfig:
     enabled: bool = False
     verbose: bool = False
     draw_helper_mask: bool = True
+    # 仅影响前端显示，不影响识别/跟踪/计数/PID 数据链路。
+    draw_overlay: bool = True
 
 
 @dataclass

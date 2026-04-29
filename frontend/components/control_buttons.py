@@ -1,15 +1,18 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from tkinter import ttk
 
-from ...backend.orchestrator.state import SystemState
+try:
+    from backend.orchestrator.state import SystemState
+except Exception:  # pragma: no cover
+    from ...backend.orchestrator.state import SystemState
 
 
 class ControlButtons(ttk.LabelFrame):
     def __init__(self, parent):
-        super().__init__(parent, text="运行控制")
-        self.init_btn = ttk.Button(self, text="初始化系统")
-        self.start_btn = ttk.Button(self, text="开始运行")
+        super().__init__(parent, text="控制按钮")
+        self.init_btn = ttk.Button(self, text="初始化")
+        self.start_btn = ttk.Button(self, text="开始")
         self.pause_btn = ttk.Button(self, text="暂停")
         self.resume_btn = ttk.Button(self, text="继续")
         self.stop_btn = ttk.Button(self, text="停止")
@@ -54,4 +57,3 @@ class ControlButtons(ttk.LabelFrame):
         self.pause_btn.configure(state=("normal" if pause_enabled else "disabled"))
         self.resume_btn.configure(state=("normal" if resume_enabled else "disabled"))
         self.stop_btn.configure(state=("normal" if stop_enabled else "disabled"))
-

@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import os
 import tkinter as tk
@@ -76,4 +76,3 @@ class VideoSourcePage(ttk.Frame):
             self.app.frontend_config["video_source"] = path
 
         self.app.show_page("init")
-

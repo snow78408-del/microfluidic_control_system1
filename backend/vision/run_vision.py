@@ -129,8 +129,11 @@ def main() -> None:
     print("Vision run complete.")
     print(f"Processed frames: {len(results)}")
     print(f"Total droplets: {final_result.metrics.analysis.total_droplets}")
-    print(f"Average diameter: {final_result.metrics.control.average_diameter:.3f}")
-    print(f"Current active droplets: {final_result.metrics.control.current_active_droplets}")
+    avg = final_result.metrics.control.average_diameter
+    print(f"Average diameter: {avg:.3f}" if avg is not None else "Average diameter: None")
+    print(f"Current active droplets: {final_result.metrics.control.frame_droplet_count}")
+    print(f"New crossing count: {final_result.metrics.control.new_crossing_count}")
+    print(f"Total real droplets: {final_result.metrics.control.total_droplet_count}")
     print(f"Valid for control: {final_result.metrics.control.valid_for_control}")
     print(f"Control validity reason: {final_result.metrics.control.reason}")
     print(f"Single-bead rate: {final_result.metrics.analysis.single_bead_rate:.2f}%")

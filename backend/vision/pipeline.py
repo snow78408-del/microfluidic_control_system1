@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from time import time
-from typing import List, Optional, Tuple
+from typing import Callable, List, Optional, Tuple
 
 import cv2
 import numpy as np
@@ -37,11 +37,12 @@ class VisionResult:
 
 
 class VisionPipeline:
-    def __init__(self, config: PipelineConfig) -> None:
+    def __init__(self, config: PipelineConfig, logger: Callable[[str], None] | None = None) -> None:
         self.config = config
+        self._log = logger or (lambda _msg: None)
         self.detector = DropletDetector(config.detector, config.debug)
         self.bead_counter = BeadCounter(config.beads, config.debug)
-        self.metrics = MetricsCalculator(config.metrics)
+        self.metrics = MetricsCalculator(config.metrics, logger=self._log)
         self.tracker: BaseTracker = self._build_tracker(config)
         self._frame_index = 0
 
@@ -63,9 +64,12 @@ class VisionPipeline:
         detections = self.detector.detect(gray)
         tracking = self.tracker.update(detections.centers, detections.radii)
         beads = self.bead_counter.count(tracking.active_tracks, gray, detections.helper_mask)
-        metrics = self.metrics.update(tracking, beads)
-
-        annotated = self._draw_overlay(roi_frame, tracking, beads, metrics)
+        metrics = self.metrics.update(tracking, beads, frame_height=int(roi_frame.shape[0]))
+        if bool(getattr(self.config.debug, "draw_overlay", False)):
+            annotated = self._draw_overlay(roi_frame, tracking, beads, metrics)
+        else:
+            # 隐藏辅助动画，仅保留原始画面显示，不影响识别链路。
+            annotated = roi_frame.copy()
 
         return VisionResult(
             frame_index=self._frame_index,
@@ -199,10 +203,13 @@ class VisionPipeline:
             for bead in droplet.bead_positions:
                 cv2.circle(canvas, (int(bead[0]), int(bead[1])), 2, (0, 255, 255), -1)
 
+        avg_d = metrics.control.average_diameter
+        avg_text = f"{avg_d:.2f}" if avg_d is not None else "None"
         stats_lines = [
-            f"active={metrics.control.current_active_droplets}",
-            f"total={metrics.analysis.total_droplets}",
-            f"avg_diameter={metrics.control.average_diameter:.2f}",
+            f"frame={metrics.control.frame_droplet_count}",
+            f"new_cross={metrics.control.new_crossing_count}",
+            f"total={metrics.control.total_droplet_count}",
+            f"avg_diameter={avg_text}",
             f"valid_for_control={metrics.control.valid_for_control}",
         ]
         for idx, line in enumerate(stats_lines):

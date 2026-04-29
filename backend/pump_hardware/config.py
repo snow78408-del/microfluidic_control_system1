@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from dataclasses import dataclass
 
@@ -28,4 +28,6 @@ class PumpHardwareConfig:
     retry_interval: float = 0.08
     post_write_delay: float = 0.08
     probe_step_delay: float = 0.06
-
+    wsp_verify_read_retry: int = 3
+    wsp_verify_retry_interval: float = 0.12
+    wss_swap_fallback: bool = True

@@ -15,15 +15,32 @@ class SystemConfig:
     initial_q1: float
     initial_q2: float
     control_interval_ms: int
+    pump_port: str = ""
+    pump_address: int = 1
+    pump_baudrate: int = 1200
+    pump_parity: str = "E"
 
 
 @dataclass(slots=True)
 class RecognitionSnapshot:
-    avg_diameter: float
-    droplet_count: int
+    frame_droplet_count: int
+    total_droplet_count: int
+    new_crossing_count: int
+    avg_diameter: float | None
     single_cell_rate: float
     valid_for_control: bool
     timestamp: float
+    reason: str
+    # backward-compatible mirrors
+    droplet_count: int
+    active_droplet_count: int
+    has_droplet: bool
+    control_reason: str
+    frame_png_base64: Optional[str] = None
+    frame_width: int = 0
+    frame_height: int = 0
+    video_source_type: str = ""
+    video_source: str = ""
 
 
 @dataclass(slots=True)
@@ -35,6 +52,8 @@ class PumpRuntimeState:
     q2: float
     running: bool
     last_error: str
+    last_update_ok: bool = False
+    last_update_reason: str = ""
 
 
 @dataclass(slots=True)
@@ -58,4 +77,3 @@ class SystemSnapshot:
     control: Optional[ControlSnapshot]
     message: str
     error: str
-

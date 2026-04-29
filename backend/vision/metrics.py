@@ -1,34 +1,37 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from collections import deque
 from dataclasses import dataclass
-from typing import Deque, Dict
+from typing import Callable, Deque, Dict
 
 import numpy as np
 
 try:
     from .bead_counter import BeadResult
     from .config import MetricsConfig
-    from .tracker import TrackingResult
+    from .tracker import DropletTrack, TrackingResult
 except ImportError:
     from bead_counter import BeadResult
     from config import MetricsConfig
-    from tracker import TrackingResult
+    from tracker import DropletTrack, TrackingResult
 
 
 @dataclass
 class ControlMetrics:
-    average_diameter: float
+    average_diameter: float | None
     current_active_droplets: int
     sample_size: int
     valid_for_control: bool
     reason: str
+    frame_droplet_count: int
+    total_droplet_count: int
+    new_crossing_count: int
 
 
 @dataclass
 class AnalysisMetrics:
     total_droplets: int
-    average_diameter: float
+    average_diameter: float | None
     current_valid_droplets: int
     single_bead_count: int
     single_bead_rate: float
@@ -36,6 +39,8 @@ class AnalysisMetrics:
     empty_rate: float
     multi_bead_count: int
     multi_bead_rate: float
+    frame_droplet_count: int
+    new_crossing_count: int
 
 
 @dataclass
@@ -44,62 +49,142 @@ class MetricsResult:
     analysis: AnalysisMetrics
 
 
+@dataclass
+class _TrackState:
+    start_y: float
+    last_y: float
+    counted: bool = False
+
+
 class MetricsCalculator:
-    def __init__(self, config: MetricsConfig) -> None:
+    def __init__(self, config: MetricsConfig, logger: Callable[[str], None] | None = None) -> None:
         self._config = config
+        self._log = logger or (lambda _msg: None)
         self._diameter_history: Deque[float] = deque(maxlen=max(1, config.rolling_window))
         self._track_bead_max: Dict[int, int] = {}
+        self._track_state: Dict[int, _TrackState] = {}
+        self._counted_track_ids: set[int] = set()
 
-    def update(self, tracking: TrackingResult, beads: BeadResult) -> MetricsResult:
-        for track in tracking.active_tracks:
-            if track.radius > 0:
-                self._diameter_history.append(float(track.radius * 2.0))
+    @staticmethod
+    def _did_cross_line(prev_y: float, cur_y: float, line_y: float) -> bool:
+        if prev_y == cur_y:
+            return False
+        return (prev_y <= line_y < cur_y) or (prev_y >= line_y > cur_y)
+
+    def _update_crossing_count(self, track: DropletTrack, line_y: float) -> bool:
+        cur_y = float(track.position[1])
+        state = self._track_state.get(track.id)
+        if state is None:
+            self._track_state[track.id] = _TrackState(start_y=cur_y, last_y=cur_y, counted=False)
+            return False
+
+        prev_y = state.last_y
+        state.last_y = cur_y
+        if state.counted:
+            return False
+
+        crossed = self._did_cross_line(prev_y, cur_y, line_y)
+        displacement = abs(cur_y - state.start_y)
+        age_ok = int(track.age) >= int(self._config.min_track_age_for_count)
+        disp_ok = displacement >= float(self._config.min_track_displacement_for_count)
+        if crossed and age_ok and disp_ok:
+            state.counted = True
+            self._counted_track_ids.add(track.id)
+            self._log(f"[VISION][COUNT] 新增真实液滴计数: track_id={track.id}, total={len(self._counted_track_ids)}")
+            return True
+        return False
+
+    def update(self, tracking: TrackingResult, beads: BeadResult, frame_height: int) -> MetricsResult:
+        line_y = float(max(1, frame_height) * float(self._config.count_line_ratio))
+
+        # 仅统计“本帧真实观测到”的轨迹：
+        # - matched_pairs: 旧轨迹在本帧有检测匹配
+        # - new_track_ids: 本帧新建轨迹
+        # 避免把 unmatched 的预测轨迹计入当前帧液滴数。
+        observed_track_ids: set[int] = set(track_id for track_id, _ in tracking.matched_pairs)
+        observed_track_ids.update(int(track_id) for track_id in tracking.new_track_ids)
+
+        valid_tracks: list[DropletTrack] = [
+            track
+            for track in tracking.active_tracks
+            if int(track.id) in observed_track_ids
+            and int(track.age) >= int(self._config.min_track_age_for_count)
+        ]
+        frame_droplet_count = len(valid_tracks)
+
+        frame_diameters: list[float] = []
+        new_crossing_count = 0
+        for track in valid_tracks:
+            if float(track.radius) > 0.0:
+                frame_diameters.append(float(track.radius) * 2.0)
+            if self._update_crossing_count(track, line_y):
+                new_crossing_count += 1
+
+        # 清理已删除轨迹状态，避免状态泄漏导致误判。
+        for track_id in tracking.removed_track_ids:
+            self._track_state.pop(int(track_id), None)
+            self._track_bead_max.pop(int(track_id), None)
+
+        if frame_droplet_count > 0 and frame_diameters:
+            self._diameter_history.extend(frame_diameters)
+        else:
+            self._log("[VISION][NO_DROPLET] 当前无有效液滴通过，不计数")
 
         for droplet in beads.droplets:
-            prev_max = self._track_bead_max.get(droplet.droplet_id, 0)
-            if droplet.bead_count > prev_max:
-                self._track_bead_max[droplet.droplet_id] = droplet.bead_count
+            prev_max = self._track_bead_max.get(int(droplet.droplet_id), 0)
+            if int(droplet.bead_count) > prev_max:
+                self._track_bead_max[int(droplet.droplet_id)] = int(droplet.bead_count)
 
-        total_droplets = tracking.total_count
-        bead_counts = [self._track_bead_max.get(track_id, 0) for track_id in range(1, total_droplets + 1)]
+        counted_ids = sorted(self._counted_track_ids)
+        bead_counts = [self._track_bead_max.get(track_id, 0) for track_id in counted_ids]
+        total_droplets = len(counted_ids)
 
         empty_count = sum(1 for value in bead_counts if value == 0)
         single_count = sum(1 for value in bead_counts if value == 1)
         multi_count = sum(1 for value in bead_counts if value >= 2)
 
-        average_diameter = float(np.mean(self._diameter_history)) if self._diameter_history else 0.0
-        current_active = len(tracking.active_tracks)
-
+        average_diameter = float(np.mean(frame_diameters)) if frame_diameters else None
         sample_size = len(self._diameter_history)
+
         valid_for_control = True
         reason = "ok"
-
-        if sample_size < self._config.min_samples_for_control:
+        if total_droplets <= 0 or frame_droplet_count == 0:
             valid_for_control = False
-            reason = "not_enough_samples"
-        elif current_active < self._config.min_active_for_control:
+            reason = "当前无有效液滴通过，不计数"
+        elif sample_size < int(self._config.min_samples_for_control):
             valid_for_control = False
-            reason = "not_enough_active_droplets"
+            reason = "有效样本不足"
+        elif frame_droplet_count < int(self._config.min_active_for_control):
+            valid_for_control = False
+            reason = "当前有效液滴不足"
+        elif average_diameter is None:
+            valid_for_control = False
+            reason = "当前无有效直径样本"
 
         denom = float(total_droplets) if total_droplets > 0 else 1.0
         analysis = AnalysisMetrics(
             total_droplets=total_droplets,
             average_diameter=average_diameter,
-            current_valid_droplets=current_active,
+            current_valid_droplets=frame_droplet_count,
             single_bead_count=single_count,
             single_bead_rate=(single_count / denom) * 100.0 if total_droplets else 0.0,
             empty_count=empty_count,
             empty_rate=(empty_count / denom) * 100.0 if total_droplets else 0.0,
             multi_bead_count=multi_count,
             multi_bead_rate=(multi_count / denom) * 100.0 if total_droplets else 0.0,
+            frame_droplet_count=frame_droplet_count,
+            new_crossing_count=new_crossing_count,
         )
 
         control = ControlMetrics(
             average_diameter=average_diameter,
-            current_active_droplets=current_active,
+            current_active_droplets=frame_droplet_count,
             sample_size=sample_size,
             valid_for_control=valid_for_control,
             reason=reason,
+            frame_droplet_count=frame_droplet_count,
+            total_droplet_count=total_droplets,
+            new_crossing_count=new_crossing_count,
         )
 
         return MetricsResult(control=control, analysis=analysis)
@@ -107,3 +192,5 @@ class MetricsCalculator:
     def reset(self) -> None:
         self._diameter_history.clear()
         self._track_bead_max.clear()
+        self._track_state.clear()
+        self._counted_track_ids.clear()
