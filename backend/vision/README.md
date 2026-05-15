@@ -27,8 +27,6 @@ vision/
 │   ├── droplet_tracking_and_counting(2).py
 │   ├── droplet_tracking_connected_40mum(1).py
 │   └── rotate_video_90ccw(1).py
-└── venv/
-    └── README.txt
 ```
 
 ## 3. 每个文件功能
@@ -68,14 +66,14 @@ vision/
 
 ## 9. 独立运行 vision 模块
 示例：
-- 本地视频：`python run_vision.py --video input.mp4`
-- 摄像头：`python run_vision.py --camera 0`
-- 启用 Kalman：`python run_vision.py --video input.mp4 --tracker kalman`
-- 运行前预处理旋转：`python run_vision.py --video input.mp4 --preprocess-rotate ccw90`
+- 本地视频：`python run.py vision --video input.mp4`
+- 摄像头：`python run.py vision --camera 0`
+- 启用 Kalman：`python run.py vision --video input.mp4 --tracker kalman`
+- 运行前预处理旋转：`python run.py vision --video input.mp4 --preprocess-rotate ccw90`
 
-## 10. 虚拟环境准备
-- 参见 `venv/README.txt`。
-- 依赖统一在 `requirements.txt`。
+## 10. 环境准备
+- 推荐使用项目顶层 `requirements.txt` 或 `pyproject.toml` 安装依赖。
+- 从项目根目录运行：`python run.py vision --video input.mp4`。
 
 ## 11. 当前版本优点
 - 从大脚本拆分为模块化架构，职责边界清晰。
