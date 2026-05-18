@@ -6,4 +6,5 @@
 - `pid_control/`：反馈控制计算
 - `pump_hardware/`：硬件抽象与泵交互
 - `orchestrator/`：系统编排与流程管理
-- `venv/`：后端虚拟运行环境目录
+
+运行入口在项目顶层 `run.py`，后端不再维护独立的 `venv/` 作为启动前提。

@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "microfluidic-control-system"
+version = "0.1.0"
+description = "Microfluidic droplet control system with Tkinter frontend and backend orchestration."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.23",
+    "opencv-python>=4.8",
+    "pyserial>=3.5",
+]
+
+[project.scripts]
+microfluidic-control = "run:main"
+
+[tool.setuptools]
+py-modules = ["run"]
+
+[tool.setuptools.packages.find]
+include = ["frontend*", "backend*"]
