@@ -19,6 +19,8 @@ class SystemConfig:
     pump_address: int = 1
     pump_baudrate: int = 1200
     pump_parity: str = "E"
+    mvs_sdk_path: str = ""
+    camera_backend: str = ""
 
 
 @dataclass(slots=True)

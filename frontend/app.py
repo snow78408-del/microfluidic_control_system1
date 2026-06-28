@@ -88,6 +88,8 @@ class FrontendApp(tk.Tk):
             pump_address=int(self.frontend_config.get("pump_address", 1)),
             pump_baudrate=int(self.frontend_config.get("pump_baudrate", 1200)),
             pump_parity=str(self.frontend_config.get("pump_parity", "E")).strip().upper() or "E",
+            mvs_sdk_path=str(self.frontend_config.get("mvs_sdk_path", "")).strip(),
+            camera_backend=str(self.frontend_config.get("camera_backend", "")).strip(),
         )
 
     def configure_prepare_initialize(self) -> None:

@@ -1,5 +1,7 @@
-﻿from dataclasses import dataclass, field
+from dataclasses import dataclass, field
 from typing import Literal, Tuple
+
+import os
 
 TrackerType = Literal["nearest", "kalman"]
 DetectionMode = Literal["split_connected", "no_split"]
@@ -95,6 +97,69 @@ class PipelineConfig:
     beads: BeadConfig = field(default_factory=BeadConfig)
     metrics: MetricsConfig = field(default_factory=MetricsConfig)
     debug: DebugConfig = field(default_factory=DebugConfig)
+
+
+@dataclass
+class HikrobotCameraConfig:
+    mvs_sdk_path: str = os.environ.get("MVS_SDK_PATH", "")
+    exposure_time: float | None = None
+    gain: float | None = None
+    frame_rate: float | None = None
+    width: int | None = None
+    height: int | None = None
+    offset_x: int | None = None
+    offset_y: int | None = None
+    pixel_format: str | None = None
+    trigger_mode: str = "Off"
+    acquisition_mode: str = "Continuous"
+    frame_failure_threshold: int = 10
+    test_frame_count: int = 3
+
+
+@dataclass
+class CameraDiscoveryConfig:
+    mvs_sdk_path: str = os.environ.get("MVS_SDK_PATH", "")
+    opencv_scan_indices: tuple[int, ...] = tuple(range(4))
+    opencv_probe_timeout_ms: int = 700
+
+
+@dataclass
+class CameraSystemConfig:
+    sdk_paths: tuple[str, ...] = tuple(
+        p for p in os.environ.get("CAMERA_SDK_PATHS", "").split(os.pathsep) if p
+    )
+    enabled_camera_backends: tuple[str, ...] = (
+        "hikrobot",
+        "basler",
+        "daheng",
+        "flir",
+        "allied_vision",
+        "gentl",
+        "opencv",
+    )
+    preferred_backend_order: tuple[str, ...] = (
+        "hikrobot",
+        "basler",
+        "daheng",
+        "flir",
+        "allied_vision",
+        "gentl",
+        "opencv",
+    )
+    gentl_producer_paths: tuple[str, ...] = tuple(
+        p for p in os.environ.get("GENICAM_GENTL64_PATH", "").split(os.pathsep) if p
+    )
+    gentl_xml_cache_dir: str = os.environ.get("HARVESTERS_XML_FILE_DIR", "")
+    opencv_scan_indices: tuple[int, ...] = tuple(range(4))
+    opencv_backend_order: tuple[str, ...] = ("dshow", "msmf", "default")
+    frame_timeout_ms: int = 1000
+    frame_failure_threshold: int = 10
+    reconnect_attempts: int = 2
+    reconnect_interval_s: float = 1.0
+    test_frame_count: int = 3
+    default_camera_parameters: dict[str, float | int | str] = field(default_factory=dict)
+    hikrobot_mvs_sdk_path: str = os.environ.get("MVS_SDK_PATH", "")
+    mvs_sdk_path: str = os.environ.get("MVS_SDK_PATH", "")
 
 
 def default_config() -> PipelineConfig:

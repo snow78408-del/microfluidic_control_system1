@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import copy
 import threading
@@ -75,7 +75,18 @@ class OrchestratorService:
         if self._cfg is None:
             return False
         mode = str(self._cfg.video_source_type or "").strip().lower()
-        return mode in {"camera", "realtime", "real_time", "live", "rtsp", "usb"}
+        return mode in {
+            "camera",
+            "realtime",
+            "real_time",
+            "live",
+            "rtsp",
+            "usb",
+            "opencv",
+            "hikrobot",
+            "hikrobot_industrial_camera",
+            "usb_camera",
+        }
 
     def _set_state(self, state: SystemState, message: str = "", error: str = "") -> None:
         with self._lock:
@@ -118,12 +129,40 @@ class OrchestratorService:
             raise RuntimeError("未配置系统参数，请先 configure()")
 
         if adapter is not None:
+            set_sdk_path = getattr(self.vision_service, "set_mvs_sdk_path", None)
+            if callable(set_sdk_path):
+                set_sdk_path(str(getattr(cfg, "mvs_sdk_path", "") or ""))
+            set_backend = getattr(self.vision_service, "set_selected_backend", None)
+            if callable(set_backend):
+                set_backend(str(getattr(cfg, "camera_backend", "") or ""))
             adapter.prepare_video(
                 video_source_type=cfg.video_source_type,
                 video_source=cfg.video_source,
                 pixel_to_micron=cfg.pixel_to_micron,
             )
         self._set_state(SystemState.VIDEO_READY, message="视频输入已准备")
+
+    def discover_cameras(self) -> dict[str, Any]:
+        self._log("[CAMERA][CALLCHAIN] frontend -> orchestrator -> vision_service -> CameraManager")
+        discover = getattr(self.vision_service, "discover_cameras_result", None)
+        if callable(discover):
+            return discover()
+        discover = getattr(self.vision_service, "refresh_cameras_result", None)
+        if callable(discover):
+            return discover()
+        raise AttributeError("vision_service 缺少 discover_cameras_result/refresh_cameras_result 接口")
+
+    def select_camera(self, unique_id: str, backend_name: str | None = None) -> dict[str, Any]:
+        select = getattr(self.vision_service, "select_camera", None)
+        if not callable(select):
+            raise AttributeError("vision_service 缺少 select_camera 接口")
+        return select(unique_id, backend_name)
+
+    def test_camera(self) -> dict[str, Any]:
+        test = getattr(self.vision_service, "test_camera", None)
+        if not callable(test):
+            raise AttributeError("vision_service 缺少 test_camera 接口")
+        return test()
 
     def _apply_pump_serial_config(self, cfg: SystemConfig) -> None:
         serial_cfg = self.pump_service.serial_config
